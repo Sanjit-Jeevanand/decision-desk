@@ -1,0 +1,896 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="DecisionDesk — real-time software architecture review via multi-agent LLM reasoning. Independent specialist agents, explicit conflict detection, and policy-gated synthesis.">
+    <title>DecisionDesk — Architecture Review</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='5' fill='%237c3aed'/%3E%3Cpath d='M7 8h10M7 12h10M7 16h6' stroke='white' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;450;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    },
+                    animation: {
+                        'glow': 'glow 2s ease-in-out infinite alternate',
+                    },
+                    keyframes: {
+                        fadeIn:  { '0%': { opacity: '0', transform: 'translateY(6px)' }, '100%': { opacity: '1', transform: 'translateY(0)' } },
+                        slideUp: { '0%': { opacity: '0', transform: 'translateY(8px)' }, '100%': { opacity: '1', transform: 'translateY(0)' } },
+                        glow:    { '0%': { boxShadow: '0 0 5px rgba(139,92,246,0.2)' }, '100%': { boxShadow: '0 0 20px rgba(139,92,246,0.4)' } },
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { background:#020617; color:#e2e8f0; font-feature-settings:"cv02","cv03","cv04","cv11"; }
+        .panel { background:rgba(15,23,42,0.5); border:1px solid rgba(51,65,85,0.4); backdrop-filter:blur(12px); }
+        .gradient-text { background:linear-gradient(135deg,#a78bfa 0%,#60a5fa 100%); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+        .agent-node { transition:all 0.3s ease; }
+        .agent-node:hover { border-color:rgba(139,92,246,0.4)!important; transform:translateY(-2px); }
+        .agent-node.executing { animation:glow 2s ease-in-out infinite alternate; border-color:#fbbf24!important; box-shadow:0 0 20px rgba(251,191,36,0.4); }
+        .agent-node.completed { border-color:rgba(16,185,129,0.6)!important; background:rgba(16,185,129,0.08)!important; }
+        .agent-node.failed    { border-color:#ef4444!important; background:rgba(239,68,68,0.08)!important; }
+        .animate-slide-up { animation:slideUp 0.3s ease-out; }
+        .animate-fade-in  { animation:fadeIn  0.3s ease-out; }
+        .nav-link { color:#94a3b8; transition:color 0.2s; position:relative; }
+        .nav-link:hover { color:#e2e8f0; }
+        .nav-link::after { content:''; position:absolute; bottom:-4px; left:0; width:0; height:2px; background:#8b5cf6; transition:width 0.2s; }
+        .nav-link:hover::after { width:100%; }
+        ::-webkit-scrollbar { width:6px; height:6px; }
+        ::-webkit-scrollbar-track { background:#0f172a; }
+        ::-webkit-scrollbar-thumb { background:#334155; border-radius:3px; }
+        @keyframes fadeIn  { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:translateY(0); } }
+        @keyframes slideUp { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+        @keyframes glow    { 0%{box-shadow:0 0 5px rgba(139,92,246,0.2)} 100%{box-shadow:0 0 20px rgba(139,92,246,0.4)} }
+    </style>
+</head>
+<body class="antialiased min-h-screen flex flex-col">
+
+<!-- Nav -->
+<nav class="fixed top-0 w-full z-50 border-b border-slate-800/50 bg-slate-950/90 backdrop-blur-xl">
+    <div class="max-w-[1600px] mx-auto px-6 h-14 flex items-center justify-between">
+        <div class="flex items-center gap-3">
+            <div class="w-7 h-7 rounded bg-violet-600 flex items-center justify-center">
+                <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+            </div>
+            <div>
+                <div class="font-mono text-xs font-bold text-slate-100 tracking-widest">DECISIONDESK</div>
+                <div class="text-[10px] text-slate-500 font-mono">Architecture Review</div>
+            </div>
+        </div>
+        <div class="hidden md:flex items-center gap-8">
+            <a href="#demo"         class="nav-link text-xs font-medium uppercase tracking-wider">Live Demo</a>
+            <a href="#architecture" class="nav-link text-xs font-medium uppercase tracking-wider">Architecture</a>
+            <a href="#agents"       class="nav-link text-xs font-medium uppercase tracking-wider">Agents</a>
+            <a href="https://github.com/Sanjit-Jeevanand" target="_blank" class="text-xs text-slate-400 hover:text-slate-200 transition-colors flex items-center gap-1">
+                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+                GitHub
+            </a>
+        </div>
+        <div class="flex items-center gap-3">
+            <div id="connectionStatus" class="flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-900 border border-slate-700">
+                <span id="statusDot" class="w-2 h-2 rounded-full bg-slate-500"></span>
+                <span id="statusLabel" class="text-[10px] font-mono text-slate-400 uppercase tracking-wider">Disconnected</span>
+            </div>
+        </div>
+    </div>
+</nav>
+
+<main class="flex-1 pt-14">
+
+<!-- Hero -->
+<section class="relative overflow-hidden border-b border-slate-800/50">
+    <div class="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-violet-900/20 via-slate-950 to-slate-950"></div>
+    <div class="max-w-[1400px] mx-auto px-6 py-16 relative">
+        <div class="max-w-3xl">
+            <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-violet-500/10 border border-violet-500/20 text-violet-400 text-xs font-mono mb-6">
+                <span class="w-1.5 h-1.5 rounded-full bg-violet-400 animate-pulse"></span>
+                8-Agent Pipeline · Real-Time Streaming
+            </div>
+            <h1 class="text-4xl md:text-5xl font-bold text-slate-100 mb-6 leading-tight">
+                Software Architecture<br>
+                <span class="gradient-text">Review, Automated</span>
+            </h1>
+            <p class="text-lg text-slate-400 mb-8 leading-relaxed max-w-2xl">
+                Submit a binary architecture decision. Eight independent agents reason in parallel, surface conflicts, and produce an auditable recommendation — streamed live.
+            </p>
+            <div class="flex flex-wrap gap-4">
+                <a href="#demo" class="px-6 py-3 bg-violet-600 hover:bg-violet-500 text-white font-medium rounded-lg transition-all flex items-center gap-2">
+                    <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd"/></svg>
+                    Run Live Review
+                </a>
+                <a href="#architecture" class="px-6 py-3 bg-slate-800 hover:bg-slate-700 text-slate-200 font-medium rounded-lg transition-all border border-slate-700">
+                    View Architecture
+                </a>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Feature chips -->
+<section class="border-b border-slate-800/50 bg-slate-950/30">
+    <div class="max-w-[1400px] mx-auto px-6 py-10">
+        <div class="grid md:grid-cols-3 gap-5">
+            <div class="p-5 rounded-xl bg-slate-900/50 border border-slate-800">
+                <div class="w-9 h-9 rounded-lg bg-violet-500/10 flex items-center justify-center mb-3">
+                    <svg class="w-4 h-4 text-violet-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                </div>
+                <h3 class="text-sm font-semibold text-slate-200 mb-1">Parallel Execution</h3>
+                <p class="text-xs text-slate-400 leading-relaxed">4 specialist agents run concurrently via ThreadPoolExecutor, cutting wall-time vs sequential by ~60%.</p>
+            </div>
+            <div class="p-5 rounded-xl bg-slate-900/50 border border-slate-800">
+                <div class="w-9 h-9 rounded-lg bg-amber-500/10 flex items-center justify-center mb-3">
+                    <svg class="w-4 h-4 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                </div>
+                <h3 class="text-sm font-semibold text-slate-200 mb-1">Explicit Conflicts</h3>
+                <p class="text-xs text-slate-400 leading-relaxed">The Detector surfaces where specialists disagree — on recommendations, confidence, or risk reasoning.</p>
+            </div>
+            <div class="p-5 rounded-xl bg-slate-900/50 border border-slate-800">
+                <div class="w-9 h-9 rounded-lg bg-emerald-500/10 flex items-center justify-center mb-3">
+                    <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+                </div>
+                <h3 class="text-sm font-semibold text-slate-200 mb-1">Policy-Gated Approval</h3>
+                <p class="text-xs text-slate-400 leading-relaxed">The Gate blocks approval if the Critic flags issues or the Detector finds irreconcilable conflicts.</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Demo -->
+<section id="demo" class="border-b border-slate-800/50 scroll-mt-14">
+    <div class="max-w-[1400px] mx-auto px-6 py-8">
+        <div class="text-center mb-6">
+            <h2 class="text-2xl font-semibold text-slate-100 mb-2">Submit Architecture Decision</h2>
+            <p class="text-sm text-slate-500">Agents reason independently — they cannot see each other's outputs</p>
+        </div>
+
+        <!-- Input card -->
+        <div class="max-w-3xl mx-auto mb-8">
+            <div class="relative mb-4">
+                <textarea id="questionInput" rows="3"
+                    class="w-full bg-slate-950/60 border border-slate-700/50 rounded-xl p-5 pr-36 text-slate-200 placeholder-slate-600 focus:outline-none focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/30 transition-all resize-none text-base leading-relaxed"
+                    placeholder="What architecture decision would you like reviewed?">Should we use PostgreSQL or DynamoDB for our main application database?</textarea>
+                <button id="runBtn" onclick="runReview()"
+                    class="absolute bottom-4 right-4 px-4 py-2 bg-violet-600 hover:bg-violet-500 disabled:opacity-60 disabled:cursor-not-allowed text-white text-xs font-medium rounded-lg transition-all flex items-center gap-2">
+                    <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd"/></svg>
+                    <span>Run Review</span>
+                </button>
+            </div>
+
+            <!-- Error banner -->
+            <div id="errorBanner" class="hidden mb-4 flex items-start gap-3 px-4 py-3 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 text-xs animate-fade-in">
+                <svg class="w-4 h-4 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                <span id="errorBannerText" class="flex-1"></span>
+                <button onclick="hideError()" class="text-red-400 hover:text-red-300">✕</button>
+            </div>
+
+            <!-- Options + constraints -->
+            <div class="grid grid-cols-2 gap-3 mb-3">
+                <div>
+                    <label class="block text-[10px] font-mono text-slate-500 uppercase mb-1.5">Option A</label>
+                    <input id="optionA" value="PostgreSQL (RDS)" class="w-full bg-slate-950/60 border border-slate-700/50 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-violet-500/50 transition-all"/>
+                </div>
+                <div>
+                    <label class="block text-[10px] font-mono text-slate-500 uppercase mb-1.5">Option B</label>
+                    <input id="optionB" value="DynamoDB" class="w-full bg-slate-950/60 border border-slate-700/50 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-violet-500/50 transition-all"/>
+                </div>
+            </div>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <div>
+                    <label class="block text-[10px] font-mono text-slate-500 uppercase mb-1.5">Team Size</label>
+                    <select id="teamSize" class="w-full bg-slate-950/60 border border-slate-700/50 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-violet-500/50 transition-all">
+                        <option value="small">Small (1–5)</option>
+                        <option value="medium" selected>Medium (5–20)</option>
+                        <option value="large">Large (20+)</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-[10px] font-mono text-slate-500 uppercase mb-1.5">Traffic</label>
+                    <select id="traffic" class="w-full bg-slate-950/60 border border-slate-700/50 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-violet-500/50 transition-all">
+                        <option value="low">Low (&lt;1k rps)</option>
+                        <option value="medium" selected>Medium (1k–100k)</option>
+                        <option value="high">High (&gt;100k rps)</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-[10px] font-mono text-slate-500 uppercase mb-1.5">Experience</label>
+                    <select id="experience" class="w-full bg-slate-950/60 border border-slate-700/50 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-violet-500/50 transition-all">
+                        <option value="junior">Junior</option>
+                        <option value="mixed" selected>Mixed</option>
+                        <option value="senior">Senior</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-[10px] font-mono text-slate-500 uppercase mb-1.5">Budget</label>
+                    <select id="budget" class="w-full bg-slate-950/60 border border-slate-700/50 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-violet-500/50 transition-all">
+                        <option value="low">Low</option>
+                        <option value="medium" selected>Medium</option>
+                        <option value="high">High</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main two-column layout -->
+        <div class="grid lg:grid-cols-[320px,1fr] gap-6">
+
+            <!-- Left: Agent Graph -->
+            <div class="panel rounded-xl p-5">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-xs font-mono text-slate-400 uppercase tracking-wider">Agent Pipeline</h3>
+                    <span id="executionStatus" class="text-[10px] font-mono text-slate-600"></span>
+                </div>
+
+                <!-- Graph nodes -->
+                <div class="flex flex-col items-center gap-2">
+                    <!-- Planner -->
+                    <div id="agent-planner" class="agent-node w-36 p-3 rounded-lg border border-slate-700 bg-slate-900/50 text-center cursor-pointer" onclick="showAgentDetail('planner')">
+                        <div class="text-slate-400 mb-1">
+                            <svg class="w-4 h-4 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+                        </div>
+                        <div class="text-[11px] font-medium text-slate-300">Planner</div>
+                        <div class="text-[9px] text-slate-600 font-mono">gpt-5-mini</div>
+                    </div>
+                    <div class="text-slate-700 text-sm">↓</div>
+
+                    <!-- Parallel specialists -->
+                    <div class="text-[9px] font-mono text-slate-600 uppercase mb-1">parallel</div>
+                    <div class="grid grid-cols-2 gap-2 w-full">
+                        <div id="agent-scalability" class="agent-node p-2.5 rounded-lg border border-slate-700 bg-slate-900/50 text-center cursor-pointer" onclick="showAgentDetail('scalability')">
+                            <svg class="w-3.5 h-3.5 mx-auto text-slate-400 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
+                            <div class="text-[10px] font-medium text-slate-300">Scalability</div>
+                            <div class="text-[8px] text-slate-600 font-mono">gpt-5</div>
+                        </div>
+                        <div id="agent-security" class="agent-node p-2.5 rounded-lg border border-slate-700 bg-slate-900/50 text-center cursor-pointer" onclick="showAgentDetail('security')">
+                            <svg class="w-3.5 h-3.5 mx-auto text-slate-400 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+                            <div class="text-[10px] font-medium text-slate-300">Security</div>
+                            <div class="text-[8px] text-slate-600 font-mono">gpt-5</div>
+                        </div>
+                        <div id="agent-cost" class="agent-node p-2.5 rounded-lg border border-slate-700 bg-slate-900/50 text-center cursor-pointer" onclick="showAgentDetail('cost')">
+                            <svg class="w-3.5 h-3.5 mx-auto text-slate-400 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                            <div class="text-[10px] font-medium text-slate-300">Cost</div>
+                            <div class="text-[8px] text-slate-600 font-mono">gpt-5</div>
+                        </div>
+                        <div id="agent-maintainability" class="agent-node p-2.5 rounded-lg border border-slate-700 bg-slate-900/50 text-center cursor-pointer" onclick="showAgentDetail('maintainability')">
+                            <svg class="w-3.5 h-3.5 mx-auto text-slate-400 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                            <div class="text-[10px] font-medium text-slate-300">Maintain.</div>
+                            <div class="text-[8px] text-slate-600 font-mono">gpt-5</div>
+                        </div>
+                    </div>
+                    <div class="text-slate-700 text-sm">↓</div>
+
+                    <!-- Sequential chain -->
+                    <div id="agent-detector" class="agent-node w-36 p-3 rounded-lg border border-slate-700 bg-slate-900/50 text-center cursor-pointer" onclick="showAgentDetail('detector')">
+                        <svg class="w-4 h-4 mx-auto text-slate-400 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                        <div class="text-[11px] font-medium text-slate-300">Detector</div>
+                        <div class="text-[9px] text-slate-600 font-mono">gpt-5-mini</div>
+                    </div>
+                    <div class="text-slate-700 text-sm">↓</div>
+                    <div id="agent-critic" class="agent-node w-36 p-3 rounded-lg border border-slate-700 bg-slate-900/50 text-center cursor-pointer" onclick="showAgentDetail('critic')">
+                        <svg class="w-4 h-4 mx-auto text-slate-400 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                        <div class="text-[11px] font-medium text-slate-300">Critic</div>
+                        <div class="text-[9px] text-slate-600 font-mono">gpt-5-mini</div>
+                    </div>
+                    <div class="text-slate-700 text-sm">↓</div>
+                    <div id="agent-synthesizer" class="agent-node w-36 p-3 rounded-lg border border-slate-700 bg-slate-900/50 text-center cursor-pointer" onclick="showAgentDetail('synthesizer')">
+                        <svg class="w-4 h-4 mx-auto text-slate-400 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"/></svg>
+                        <div class="text-[11px] font-medium text-slate-300">Synthesizer</div>
+                        <div class="text-[9px] text-slate-600 font-mono">gpt-5.5</div>
+                    </div>
+                    <div class="text-slate-700 text-sm">↓</div>
+                    <div id="agent-gate" class="agent-node w-36 p-3 rounded-lg border border-slate-700 bg-slate-900/50 text-center cursor-pointer" onclick="showAgentDetail('gate')">
+                        <svg class="w-4 h-4 mx-auto text-slate-400 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+                        <div class="text-[11px] font-medium text-slate-300">Gate</div>
+                        <div class="text-[9px] text-slate-600 font-mono">rule-based</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right: Live output -->
+            <div class="space-y-4">
+
+                <!-- ANSWER FIRST: Synthesis panel -->
+                <div id="synthesisPanel" class="hidden panel rounded-xl p-5 border-l-2 border-violet-500/50 animate-fade-in">
+                    <div class="flex items-center gap-2 mb-3">
+                        <svg class="w-4 h-4 text-violet-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"/></svg>
+                        <h3 class="text-xs font-semibold text-violet-300 uppercase tracking-wider">Final Recommendation</h3>
+                        <span id="synthRevisionBadge" class="hidden px-2 py-0.5 rounded bg-violet-500/20 text-violet-400 text-[9px] font-mono border border-violet-500/30">REVISED</span>
+                    </div>
+                    <div id="synthesisContent"></div>
+                </div>
+
+                <!-- Gate result -->
+                <div id="gatePanel" class="hidden panel rounded-xl p-5 animate-fade-in">
+                    <div id="gateContent"></div>
+                </div>
+
+                <!-- Revision panel — shown after first pass completes -->
+                <div id="revisionPanel" class="hidden panel rounded-xl p-5 border-l-2 border-slate-600/50 animate-fade-in">
+                    <div class="flex items-center gap-2 mb-4">
+                        <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                        <h3 class="text-xs font-semibold text-slate-300 uppercase tracking-wider">Revise Analysis</h3>
+                    </div>
+                    <p class="text-xs text-slate-500 mb-4">Check the issues you're willing to accept or override, add any context, then re-run just the Critic and Synthesizer.</p>
+                    <div id="revisionIssuesList" class="space-y-2 mb-4"></div>
+                    <div class="mb-4">
+                        <label class="block text-[10px] font-mono text-slate-500 uppercase mb-1.5">Additional context / overrides</label>
+                        <textarea id="revisionContext" rows="3" placeholder="e.g. Our team has strong DynamoDB experience. We're okay with higher egress costs."
+                            class="w-full bg-slate-950/60 border border-slate-700/50 rounded-lg p-3 text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-violet-500/50 transition-all resize-none"></textarea>
+                    </div>
+                    <button id="reviseBtn" onclick="runRevision()"
+                        class="px-4 py-2 bg-slate-700 hover:bg-slate-600 disabled:opacity-50 text-white text-xs font-medium rounded-lg transition-all flex items-center gap-2">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                        <span>Re-run Critic & Synthesizer</span>
+                    </button>
+                </div>
+
+                <!-- Conflicts panel -->
+                <div id="conflictsPanel" class="hidden panel rounded-xl p-5 border-l-2 border-amber-500/50 animate-fade-in">
+                    <div class="flex items-center gap-2 mb-3">
+                        <svg class="w-4 h-4 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                        <h3 class="text-xs font-semibold text-amber-300 uppercase tracking-wider">Conflicts Detected</h3>
+                    </div>
+                    <div id="conflictsContent" class="space-y-2"></div>
+                </div>
+
+                <!-- Critic panel -->
+                <div id="criticPanel" class="hidden panel rounded-xl p-5 border-l-2 border-red-500/40 animate-fade-in">
+                    <div class="flex items-center gap-2 mb-3">
+                        <svg class="w-4 h-4 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                        <h3 class="text-xs font-semibold text-red-300 uppercase tracking-wider">Critic Issues</h3>
+                        <span id="criticRevisionBadge" class="hidden px-2 py-0.5 rounded bg-red-500/20 text-red-400 text-[9px] font-mono border border-red-500/30">REVISION REQUIRED</span>
+                    </div>
+                    <div id="criticContent" class="space-y-2"></div>
+                </div>
+
+                <!-- Agent output cards -->
+                <div id="agentOutputs">
+                    <div class="p-10 text-center text-slate-600 text-sm panel rounded-xl">
+                        <svg class="w-10 h-10 mx-auto mb-3 opacity-40" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>
+                        Submit a decision to observe agent reasoning in real time
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Architecture -->
+<section id="architecture" class="border-b border-slate-800/50 scroll-mt-14">
+    <div class="max-w-[1400px] mx-auto px-6 py-14">
+        <h2 class="text-2xl font-semibold text-slate-100 mb-2">Architecture</h2>
+        <p class="text-sm text-slate-500 mb-10">Deterministic state machine with typed agent I/O and policy-gated approval</p>
+        <div class="grid md:grid-cols-3 gap-5">
+            <div class="p-5 rounded-xl bg-slate-900/40 border border-slate-800">
+                <h3 class="text-sm font-semibold text-slate-200 mb-2">LangGraph Orchestration</h3>
+                <p class="text-xs text-slate-400 leading-relaxed">Two compiled graphs — parallel (fan-out/fan-in on the 4 specialists) and sequential (baseline for benchmarking). Shared flat TypedDict state eliminates merge conflicts in parallel execution.</p>
+            </div>
+            <div class="p-5 rounded-xl bg-slate-900/40 border border-slate-800">
+                <h3 class="text-sm font-semibold text-slate-200 mb-2">Pydantic I/O Schemas</h3>
+                <p class="text-xs text-slate-400 leading-relaxed">Every agent input and output is a typed Pydantic model. Planner writes named sub-questions per specialist — no generic list indexing. OpenAI structured outputs validate JSON schema at the model layer.</p>
+            </div>
+            <div class="p-5 rounded-xl bg-slate-900/40 border border-slate-800">
+                <h3 class="text-sm font-semibold text-slate-200 mb-2">WebSocket Streaming</h3>
+                <p class="text-xs text-slate-400 leading-relaxed">LangGraph <code class="text-violet-400 text-[10px]">astream_events(v2)</code> fires <code class="text-violet-400 text-[10px]">on_chain_start</code> and <code class="text-violet-400 text-[10px]">on_chain_end</code> per node. Specialists arrive out of order as threads complete — the UI renders each independently.</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Agents -->
+<section id="agents" class="scroll-mt-14">
+    <div class="max-w-[1400px] mx-auto px-6 py-14">
+        <h2 class="text-2xl font-semibold text-slate-100 mb-2">The 8 Agents</h2>
+        <p class="text-sm text-slate-500 mb-10">Each agent sees only what it needs — specialists cannot see each other's outputs</p>
+        <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div class="p-4 rounded-xl bg-slate-900/50 border border-slate-800">
+                <div class="text-[10px] font-mono text-violet-400 mb-2">PLANNER · gpt-5-mini</div>
+                <h3 class="text-sm font-semibold text-slate-200 mb-1">Planner</h3>
+                <p class="text-xs text-slate-400 leading-relaxed">Decomposes the question into one targeted sub-question per specialist. Extracts key constraints that all agents must respect.</p>
+            </div>
+            <div class="p-4 rounded-xl bg-slate-900/50 border border-slate-800">
+                <div class="text-[10px] font-mono text-violet-400 mb-2">SPECIALIST · gpt-5</div>
+                <h3 class="text-sm font-semibold text-slate-200 mb-1">Scalability</h3>
+                <p class="text-xs text-slate-400 leading-relaxed">Throughput, horizontal scaling limits, sharding, connection pool exhaustion, data growth degradation.</p>
+            </div>
+            <div class="p-4 rounded-xl bg-slate-900/50 border border-slate-800">
+                <div class="text-[10px] font-mono text-violet-400 mb-2">SPECIALIST · gpt-5</div>
+                <h3 class="text-sm font-semibold text-slate-200 mb-1">Security</h3>
+                <p class="text-xs text-slate-400 leading-relaxed">Attack surface, auth boundaries, encryption at rest/transit, CVE exposure, compliance posture, managed vs self-patched.</p>
+            </div>
+            <div class="p-4 rounded-xl bg-slate-900/50 border border-slate-800">
+                <div class="text-[10px] font-mono text-violet-400 mb-2">SPECIALIST · gpt-5</div>
+                <h3 class="text-sm font-semibold text-slate-200 mb-1">Cost</h3>
+                <p class="text-xs text-slate-400 leading-relaxed">TCO, licensing, egress fees, operational overhead, scaling cost curves, step-function pricing jumps.</p>
+            </div>
+            <div class="p-4 rounded-xl bg-slate-900/50 border border-slate-800">
+                <div class="text-[10px] font-mono text-violet-400 mb-2">SPECIALIST · gpt-5</div>
+                <h3 class="text-sm font-semibold text-slate-200 mb-1">Maintainability</h3>
+                <p class="text-xs text-slate-400 leading-relaxed">Team familiarity, debugging story, migration risk, vendor lock-in, operational toil, reversibility.</p>
+            </div>
+            <div class="p-4 rounded-xl bg-slate-900/50 border border-slate-800">
+                <div class="text-[10px] font-mono text-violet-400 mb-2">DETECTOR · gpt-5-mini</div>
+                <h3 class="text-sm font-semibold text-slate-200 mb-1">Detector</h3>
+                <p class="text-xs text-slate-400 leading-relaxed">Surfaces recommendation splits, confidence conflicts, and risk contradictions. Classifies each as blocking or non-blocking.</p>
+            </div>
+            <div class="p-4 rounded-xl bg-slate-900/50 border border-slate-800">
+                <div class="text-[10px] font-mono text-violet-400 mb-2">CRITIC · gpt-5-mini</div>
+                <h3 class="text-sm font-semibold text-slate-200 mb-1">Critic</h3>
+                <p class="text-xs text-slate-400 leading-relaxed">Challenges specialist assumptions. Surfaces collective blind spots. Sets requires_revision if issues would change the outcome.</p>
+            </div>
+            <div class="p-4 rounded-xl bg-slate-900/50 border border-slate-800">
+                <div class="text-[10px] font-mono text-violet-400 mb-2">SYNTHESIZER · gpt-5.5</div>
+                <h3 class="text-sm font-semibold text-slate-200 mb-1">Synthesizer</h3>
+                <p class="text-xs text-slate-400 leading-relaxed">Weighs all evidence and commits to one option. Resolves conflicts. Lists tradeoffs and unresolved risks. Never outputs "neutral".</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+</main>
+
+<footer class="border-t border-slate-800/50 bg-slate-950/80">
+    <div class="max-w-[1400px] mx-auto px-6 py-6 flex flex-col sm:flex-row items-center justify-between gap-3">
+        <div class="text-xs text-slate-600 font-mono">DecisionDesk · Sanjit Jeevanand · UCL CS MSc</div>
+        <div class="flex items-center gap-4 text-xs text-slate-600">
+            <a href="https://github.com/Sanjit-Jeevanand" target="_blank" class="hover:text-slate-400 transition-colors">GitHub</a>
+            <span>Built with FastAPI · LangGraph · GPT-4o</span>
+        </div>
+    </div>
+</footer>
+
+<script>
+    // ---------------------------------------------------------------------------
+    // Utilities
+    // ---------------------------------------------------------------------------
+    function escapeHtml(str) {
+        if (typeof str !== 'string') return String(str ?? '');
+        return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+    }
+
+    function backendWsUrl() {
+        const loc = window.location;
+        if (loc.hostname === 'localhost' || loc.hostname === '127.0.0.1') {
+            return `ws://${loc.host}/ws/review`;
+        }
+        // GCS-hosted frontend → point to Cloud Run backend
+        return 'wss://decision-desk.europe-west1.run.app/ws/review';
+    }
+
+    function recLabel(rec) {
+        const a = document.getElementById('optionA')?.value || 'Option A';
+        const b = document.getElementById('optionB')?.value || 'Option B';
+        if (rec === 'option_a') return `A — ${a}`;
+        if (rec === 'option_b') return `B — ${b}`;
+        if (rec === 'hybrid')   return `Hybrid — ${a} + ${b}`;
+        return rec ?? 'Pending';
+    }
+
+    // ---------------------------------------------------------------------------
+    // UI state
+    // ---------------------------------------------------------------------------
+    let ws = null;
+    const agentOutputs = {};
+
+    function updateConnectionStatus(state) {
+        const dot   = document.getElementById('statusDot');
+        const label = document.getElementById('statusLabel');
+        const map = {
+            connected:    ['bg-emerald-400', 'Connected'],
+            connecting:   ['bg-amber-400 animate-pulse', 'Connecting…'],
+            disconnected: ['bg-slate-500', 'Disconnected'],
+        };
+        const [cls, text] = map[state] || map.disconnected;
+        dot.className = `w-2 h-2 rounded-full ${cls}`;
+        label.textContent = text;
+        label.className = `text-[10px] font-mono uppercase tracking-wider ${state === 'connected' ? 'text-emerald-400' : 'text-slate-400'}`;
+    }
+
+    function setAgentState(name, state) {
+        const el = document.getElementById(`agent-${name}`);
+        if (!el) return;
+        el.classList.remove('executing', 'completed', 'failed');
+        if (state) el.classList.add(state);
+    }
+
+    function setRunButtonBusy(busy) {
+        const btn = document.getElementById('runBtn');
+        btn.disabled = busy;
+        btn.querySelector('span').textContent = busy ? 'Running…' : 'Run Review';
+    }
+
+    function showError(msg) {
+        document.getElementById('errorBannerText').textContent = msg;
+        document.getElementById('errorBanner').classList.remove('hidden');
+    }
+    function hideError() {
+        document.getElementById('errorBanner').classList.add('hidden');
+    }
+
+    function showAgentDetail(name) {
+        const out = agentOutputs[name];
+        if (!out) return;
+        // Simple highlight — could expand to a side panel later
+        console.log(`[${name}]`, out);
+    }
+
+    // ---------------------------------------------------------------------------
+    // Reset
+    // ---------------------------------------------------------------------------
+    function resetUI() {
+        document.querySelectorAll('.agent-node').forEach(n => n.classList.remove('executing','completed','failed'));
+        document.getElementById('agentOutputs').innerHTML = `
+            <div class="p-10 text-center text-slate-600 text-sm panel rounded-xl">
+                <svg class="w-10 h-10 mx-auto mb-3 opacity-40" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>
+                Submit a decision to observe agent reasoning in real time
+            </div>`;
+        ['conflictsPanel','criticPanel','synthesisPanel','gatePanel','revisionPanel'].forEach(id =>
+            document.getElementById(id).classList.add('hidden'));
+        document.getElementById('criticRevisionBadge').classList.add('hidden');
+        document.getElementById('synthRevisionBadge').classList.add('hidden');
+        document.getElementById('executionStatus').textContent = '';
+        document.getElementById('revisionContext').value = '';
+        Object.keys(agentOutputs).forEach(k => delete agentOutputs[k]);
+        hideError();
+    }
+
+    // ---------------------------------------------------------------------------
+    // Agent cards
+    // ---------------------------------------------------------------------------
+    function addAgentCard(name, output) {
+        const container = document.getElementById('agentOutputs');
+        const placeholder = container.querySelector('.text-center');
+        if (placeholder) placeholder.remove();
+
+        const card = document.createElement('div');
+        card.className = 'animate-slide-up p-4 rounded-xl bg-slate-900/50 border border-slate-800 mb-3';
+
+        const conf    = output?.confidence ?? null;
+        const confPct = conf !== null ? `${(conf * 100).toFixed(0)}%` : '';
+        const confColor = conf > 0.8 ? 'text-emerald-400' : conf > 0.65 ? 'text-amber-400' : 'text-red-400';
+
+        let body = '';
+        const SPECIALISTS = ['scalability','security','cost','maintainability'];
+
+        if (name === 'planner') {
+            body = `<p class="text-xs text-slate-400">Decomposed into 4 targeted sub-questions for specialist agents.</p>`;
+        } else if (SPECIALISTS.includes(name)) {
+            const rec = output?.recommendation;
+            const recColor = rec === 'option_a' ? 'text-blue-400' : rec === 'option_b' ? 'text-violet-400' : 'text-slate-400';
+            const risks = output?.risks ?? [];
+            body = `
+                <div class="mb-2">
+                    <span class="text-[10px] text-slate-500 uppercase">Recommends</span>
+                    <p class="text-sm font-medium ${recColor}">${escapeHtml(recLabel(rec))}</p>
+                </div>
+                ${risks.length ? `<div class="flex flex-wrap gap-1 mt-2">${risks.slice(0,3).map(r => `<span class="px-1.5 py-0.5 rounded bg-red-500/10 text-red-400 text-[9px] border border-red-500/20">${escapeHtml(r)}</span>`).join('')}</div>` : ''}`;
+        } else if (name === 'detector') {
+            const n = (output?.conflicts ?? []).length;
+            body = `<p class="text-xs text-slate-400">${n > 0 ? `${n} conflict(s) found — severity: ${escapeHtml(output.severity)}` : 'No conflicts detected.'}</p>`;
+        } else if (name === 'critic') {
+            const n = (output?.issues ?? []).length;
+            body = `<p class="text-xs text-slate-400">${n > 0 ? `${n} issue(s) raised.` : 'No issues.'} ${output?.requires_revision ? '<span class="text-red-400">Revision required.</span>' : ''}</p>`;
+        } else if (name === 'synthesizer') {
+            body = `
+                <div class="mb-1">
+                    <span class="text-[10px] text-slate-500 uppercase">Final</span>
+                    <p class="text-sm font-medium text-violet-300">${escapeHtml(recLabel(output?.final_recommendation))}</p>
+                </div>`;
+        } else if (name === 'gate') {
+            const approved = output?.decision?.approved;
+            body = approved
+                ? `<span class="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 text-[10px] border border-emerald-500/20 font-mono">✓ APPROVED</span>`
+                : `<span class="px-2 py-0.5 rounded bg-red-500/10 text-red-400 text-[10px] border border-red-500/20 font-mono">✗ BLOCKED</span>`;
+        }
+
+        card.innerHTML = `
+            <div class="flex items-center justify-between mb-2">
+                <span class="text-xs font-semibold text-slate-300 uppercase tracking-wide">${escapeHtml(name)}</span>
+                <span class="text-[10px] font-mono ${confColor}">${confPct}</span>
+            </div>
+            ${body}
+            <details class="mt-2">
+                <summary class="text-[10px] text-violet-400 cursor-pointer hover:text-violet-300">Full output</summary>
+                <pre class="text-[9px] text-slate-500 mt-2 overflow-x-auto whitespace-pre-wrap max-h-48">${escapeHtml(JSON.stringify(output, null, 2))}</pre>
+            </details>`;
+
+        container.appendChild(card);
+    }
+
+    // ---------------------------------------------------------------------------
+    // Specialist panels
+    // ---------------------------------------------------------------------------
+    function showConflicts(output) {
+        const conflicts = output?.conflicts ?? [];
+        if (!conflicts.length) return;
+        const panel   = document.getElementById('conflictsPanel');
+        const content = document.getElementById('conflictsContent');
+        content.innerHTML = conflicts.map(c => `
+            <div class="p-3 rounded-lg bg-slate-950/50 border border-amber-500/20 text-xs">
+                <div class="flex items-center gap-2 mb-1">
+                    <span class="text-slate-300 font-medium">${escapeHtml((c.agents || []).join(' vs '))}</span>
+                    <span class="px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400 text-[9px] border border-amber-500/20 font-mono">${escapeHtml(c.dimension || '')}</span>
+                </div>
+                <p class="text-slate-400">${escapeHtml(c.description || '')}</p>
+            </div>`).join('');
+        panel.classList.remove('hidden');
+    }
+
+    function showCritic(output) {
+        const issues = output?.issues ?? [];
+        const panel   = document.getElementById('criticPanel');
+        const content = document.getElementById('criticContent');
+        if (output?.requires_revision) document.getElementById('criticRevisionBadge').classList.remove('hidden');
+        if (!issues.length) return;
+        content.innerHTML = issues.map(issue => `
+            <div class="p-3 rounded-lg bg-slate-950/50 border border-red-500/20 text-xs text-slate-400">
+                ${escapeHtml(issue)}
+            </div>`).join('');
+        panel.classList.remove('hidden');
+    }
+
+    function showSynthesis(output) {
+        const panel   = document.getElementById('synthesisPanel');
+        const content = document.getElementById('synthesisContent');
+        const conf    = (output?.confidence ?? 0) * 100;
+        const confColor = conf > 80 ? '#34d399' : conf > 65 ? '#fbbf24' : '#f87171';
+        content.innerHTML = `
+            <div class="flex items-start justify-between gap-4 mb-4 flex-wrap">
+                <div>
+                    <div class="text-[10px] text-slate-500 mb-0.5">Recommends</div>
+                    <div class="text-base font-semibold text-violet-200">${escapeHtml(recLabel(output?.final_recommendation))}</div>
+                </div>
+                <div class="text-right">
+                    <div class="text-[10px] text-slate-500 mb-1">Confidence</div>
+                    <div class="flex items-center gap-2">
+                        <div class="w-20 h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                            <div class="h-full rounded-full" style="width:${conf}%;background:${confColor}"></div>
+                        </div>
+                        <span class="text-xs font-mono" style="color:${confColor}">${conf.toFixed(0)}%</span>
+                    </div>
+                </div>
+            </div>
+            ${output?.rationale ? `<p class="text-xs text-slate-400 mb-4 leading-relaxed">${escapeHtml(output.rationale)}</p>` : ''}
+            ${(output?.tradeoffs ?? []).length ? `
+                <div class="mb-3">
+                    <div class="text-[10px] font-mono text-slate-500 uppercase mb-2">Tradeoffs</div>
+                    <ul class="space-y-1">${output.tradeoffs.map(t => `<li class="text-xs text-slate-400">• ${escapeHtml(t)}</li>`).join('')}</ul>
+                </div>` : ''}
+            ${(output?.unresolved_risks ?? []).length ? `
+                <div>
+                    <div class="text-[10px] font-mono text-slate-500 uppercase mb-2">Unresolved Risks</div>
+                    <div class="flex flex-wrap gap-2">${output.unresolved_risks.map(r => `<span class="px-2 py-1 rounded bg-amber-500/10 text-amber-400 text-[10px] border border-amber-500/20">${escapeHtml(r)}</span>`).join('')}</div>
+                </div>` : ''}`;
+        panel.classList.remove('hidden');
+    }
+
+    function showGate(output) {
+        const panel   = document.getElementById('gatePanel');
+        const content = document.getElementById('gateContent');
+        const approved = output?.decision?.approved;
+        content.innerHTML = `
+            <div class="flex items-center gap-3">
+                <span class="px-3 py-1 rounded font-mono text-sm border ${approved
+                    ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
+                    : 'bg-red-500/10 text-red-400 border-red-500/30'}">
+                    ${approved ? '✓ APPROVED' : '✗ BLOCKED'}
+                </span>
+                <p class="text-xs text-slate-400">${escapeHtml(output?.decision?.reason ?? '')}</p>
+            </div>`;
+        panel.classList.remove('hidden');
+    }
+
+    // ---------------------------------------------------------------------------
+    // WebSocket message handler
+    // ---------------------------------------------------------------------------
+    function processMessage(data) {
+        const { type, agent } = data;
+
+        if (type === 'state_initialized') {
+            document.getElementById('executionStatus').textContent = 'Running…';
+
+        } else if (type === 'agent_started') {
+            setAgentState(agent, 'executing');
+
+        } else if (type === 'agent_completed') {
+            agentOutputs[agent] = data.output;
+            setAgentState(agent, 'completed');
+            addAgentCard(agent, data.output);
+            if (agent === 'detector')   showConflicts(data.output);
+            if (agent === 'critic')     showCritic(data.output);
+            if (agent === 'synthesizer') showSynthesis(data.output);
+            if (agent === 'gate')       showGate(data.output);
+
+        } else if (type === 'review_complete') {
+            document.getElementById('executionStatus').textContent = data.approved ? '✓ Approved' : '✗ Blocked';
+            setRunButtonBusy(false);
+            showRevisionPanel();
+
+        } else if (type === 'error') {
+            document.getElementById('executionStatus').textContent = 'Failed';
+            showError(data.error || 'Unknown error');
+            setRunButtonBusy(false);
+        }
+    }
+
+    // ---------------------------------------------------------------------------
+    // Revision panel
+    // ---------------------------------------------------------------------------
+    function showRevisionPanel() {
+        const issues = agentOutputs['critic']?.issues ?? [];
+        const list   = document.getElementById('revisionIssuesList');
+
+        if (issues.length) {
+            list.innerHTML = issues.map((issue, i) => `
+                <label class="flex items-start gap-2.5 cursor-pointer group">
+                    <input type="checkbox" data-idx="${i}"
+                        class="revision-issue-cb mt-0.5 accent-violet-500 shrink-0">
+                    <span class="text-xs text-slate-400 group-hover:text-slate-300 transition-colors leading-relaxed">${escapeHtml(issue)}</span>
+                </label>`).join('');
+        } else {
+            list.innerHTML = '<p class="text-xs text-slate-500 italic">No critic issues to review.</p>';
+        }
+
+        document.getElementById('revisionPanel').classList.remove('hidden');
+    }
+
+    function setReviseButtonBusy(busy) {
+        const btn = document.getElementById('reviseBtn');
+        btn.disabled = busy;
+        btn.querySelector('span').textContent = busy ? 'Running…' : 'Re-run Critic & Synthesizer';
+    }
+
+    function runRevision() {
+        const issues = agentOutputs['critic']?.issues ?? [];
+        const accepted = [...document.querySelectorAll('.revision-issue-cb:checked')]
+            .map(cb => issues[parseInt(cb.dataset.idx)])
+            .filter(Boolean);
+        const extra = document.getElementById('revisionContext').value.trim();
+
+        if (!accepted.length && !extra) {
+            showError('Select at least one acknowledged issue or add context before revising.');
+            return;
+        }
+
+        setReviseButtonBusy(true);
+        hideError();
+
+        // Reset only the re-runnable agents in the graph diagram
+        ['critic','synthesizer','gate'].forEach(n => setAgentState(n, ''));
+
+        const revWs = new WebSocket(backendWsUrl().replace('/ws/review', '/ws/revise'));
+
+        revWs.onopen = () => {
+            updateConnectionStatus('connected');
+            revWs.send(JSON.stringify({
+                type:               'revise',
+                question:           document.getElementById('questionInput').value.trim(),
+                option_a:           document.getElementById('optionA').value.trim(),
+                option_b:           document.getElementById('optionB').value.trim(),
+                constraints: {
+                    team_size:  document.getElementById('teamSize').value,
+                    traffic:    document.getElementById('traffic').value,
+                    experience: document.getElementById('experience').value,
+                    budget:     document.getElementById('budget').value,
+                },
+                accepted_issues:    accepted,
+                additional_context: extra,
+                force_approve:      false,
+                // Send back the previous outputs so the server can reconstruct state
+                planner:         agentOutputs['planner']         ?? null,
+                scalability:     agentOutputs['scalability']     ?? null,
+                security:        agentOutputs['security']        ?? null,
+                cost:            agentOutputs['cost']            ?? null,
+                maintainability: agentOutputs['maintainability'] ?? null,
+                detector:        agentOutputs['detector']        ?? null,
+            }));
+        };
+
+        revWs.onmessage = async (evt) => {
+            const data = JSON.parse(evt.data);
+
+            if (data.type === 'agent_started') {
+                setAgentState(data.agent, 'executing');
+
+            } else if (data.type === 'agent_completed') {
+                agentOutputs[data.agent] = data.output;
+                setAgentState(data.agent, 'completed');
+
+                // Update panels in-place — don't add to the agent card list
+                if (data.agent === 'synthesizer') {
+                    showSynthesis(data.output);
+                    document.getElementById('synthRevisionBadge').classList.remove('hidden');
+                }
+                if (data.agent === 'gate') {
+                    showGate(data.output);
+                }
+
+            } else if (data.type === 'review_complete') {
+                document.getElementById('executionStatus').textContent = '✓ Revised';
+                setReviseButtonBusy(false);
+
+            } else if (data.type === 'error') {
+                showError(data.error || 'Revision failed');
+                setReviseButtonBusy(false);
+            }
+
+            await new Promise(requestAnimationFrame);
+        };
+
+        revWs.onerror = () => {
+            updateConnectionStatus('disconnected');
+            showError('Revision request failed — check server logs.');
+            setReviseButtonBusy(false);
+        };
+
+        revWs.onclose = () => {
+            updateConnectionStatus('disconnected');
+            setReviseButtonBusy(false);
+        };
+    }
+
+    // ---------------------------------------------------------------------------
+    // Run
+    // ---------------------------------------------------------------------------
+    function runReview() {
+        if (ws && ws.readyState === WebSocket.OPEN) { try { ws.close(); } catch(_){} }
+        resetUI();
+        setRunButtonBusy(true);
+        updateConnectionStatus('connecting');
+
+        ws = new WebSocket(backendWsUrl());
+
+        ws.onopen = () => {
+            updateConnectionStatus('connected');
+            ws.send(JSON.stringify({
+                type:         'start',
+                question:     document.getElementById('questionInput').value.trim(),
+                option_a:     document.getElementById('optionA').value.trim(),
+                option_b:     document.getElementById('optionB').value.trim(),
+                constraints: {
+                    team_size:   document.getElementById('teamSize').value,
+                    traffic:     document.getElementById('traffic').value,
+                    experience:  document.getElementById('experience').value,
+                    budget:      document.getElementById('budget').value,
+                },
+                force_approve: false,
+            }));
+        };
+
+        ws.onmessage = async (evt) => {
+            const data = JSON.parse(evt.data);
+            processMessage(data);
+            await new Promise(requestAnimationFrame);
+        };
+
+        ws.onerror = () => {
+            updateConnectionStatus('disconnected');
+            showError('Could not reach the backend. It may be cold-starting — try again in a few seconds.');
+            setRunButtonBusy(false);
+        };
+
+        ws.onclose = () => {
+            updateConnectionStatus('disconnected');
+            setRunButtonBusy(false);
+        };
+    }
+
+    // Smooth scroll
+    document.querySelectorAll('a[href^="#"]').forEach(a => {
+        a.addEventListener('click', e => {
+            e.preventDefault();
+            document.querySelector(a.getAttribute('href'))?.scrollIntoView({ behavior:'smooth' });
+        });
+    });
+</script>
+</body>
+</html>
