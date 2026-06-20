@@ -1,0 +1,20 @@
+groups:
+  - name: decisiondesk_slo
+    rules:
+      - alert: ReviewLatencyP95High
+        expr: histogram_quantile(0.95, rate(decisiondesk_review_duration_seconds_bucket[5m])) > 60
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "P95 review latency above SLO ({{ $value | humanizeDuration }})"
+
+      - alert: ReviewErrorRateHigh
+        expr: |
+          rate(decisiondesk_reviews_total{outcome="error"}[5m])
+          / rate(decisiondesk_reviews_total[5m]) > 0.05
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Error rate above 5% ({{ $value | humanizePercentage }})"

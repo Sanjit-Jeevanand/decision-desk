@@ -14,7 +14,11 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
+from prometheus_client import (
+    Counter, Gauge, Histogram, generate_latest, CONTENT_TYPE_LATEST,
+    REGISTRY,
+)
 from pydantic import BaseModel
 
 from decisiondesk.core.schema import (
@@ -30,6 +34,25 @@ from decisiondesk.graph.sequential import sequential_graph
 INDEX_HTML = Path(__file__).resolve().parents[2] / "index.html"
 
 app = FastAPI(title="DecisionDesk", version="0.1.0")
+
+# ---------------------------------------------------------------------------
+# Prometheus metrics
+# ---------------------------------------------------------------------------
+
+active_sessions = Gauge(
+    "decisiondesk_active_sessions_total",
+    "WebSocket review sessions currently open",
+)
+review_duration = Histogram(
+    "decisiondesk_review_duration_seconds",
+    "End-to-end wall time from WS connect to review_complete",
+    buckets=[10, 20, 30, 45, 60, 90, 120],
+)
+reviews_total = Counter(
+    "decisiondesk_reviews_total",
+    "Reviews completed",
+    ["outcome"],   # approved | rejected | error
+)
 
 # All LangGraph node names — used to filter astream_events noise
 AGENT_NODES = frozenset({
@@ -152,8 +175,7 @@ def health():
 
 @app.get("/metrics")
 def metrics():
-    # Phase 3: replace with prometheus_client.generate_latest()
-    return {"note": "Prometheus metrics endpoint — wired in Phase 3"}
+    return Response(generate_latest(REGISTRY), media_type=CONTENT_TYPE_LATEST)
 
 
 @app.post("/review", response_model=ReviewResponse)
@@ -189,6 +211,8 @@ async def review_websocket(ws: WebSocket):
       {"type": "error",             "error": "...", "timestamp": ...}
     """
     await ws.accept()
+    active_sessions.inc()
+    t_start = time.perf_counter()
 
     async def emit(event: dict) -> None:
         await ws.send_json(event)
@@ -243,10 +267,14 @@ async def review_websocket(ws: WebSocket):
 
         gate        = final_state.get("gate")
         synthesizer = final_state.get("synthesizer")
+        approved    = gate.decision.approved if gate else False
+
+        review_duration.observe(time.perf_counter() - t_start)
+        reviews_total.labels(outcome="approved" if approved else "rejected").inc()
 
         await emit({
             "type":             "review_complete",
-            "approved":         gate.decision.approved if gate else False,
+            "approved":         approved,
             "gate_tier":        gate.decision.tier if gate else GateTier.EXPLORATION.value,
             "gate_reason":      gate.decision.reason if gate else "",
             "recommendation":   synthesizer.final_recommendation if synthesizer else None,
@@ -263,6 +291,7 @@ async def review_websocket(ws: WebSocket):
     except Exception as exc:
         import traceback
         traceback.print_exc()
+        reviews_total.labels(outcome="error").inc()
         try:
             await emit({
                 "type":      "error",
@@ -271,6 +300,10 @@ async def review_websocket(ws: WebSocket):
             })
         except Exception:
             pass
+
+    finally:
+        active_sessions.dec()
+        review_duration.observe(time.perf_counter() - t_start)
 
 
 @app.websocket("/ws/revise")
