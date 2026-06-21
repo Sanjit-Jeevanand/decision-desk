@@ -8,35 +8,24 @@ Built as a backend engineering portfolio project demonstrating multi-agent orche
 
 ## Architecture
 
-```
-                          ┌─────────────┐
-                          │   Planner   │  gpt-5-mini
-                          └──────┬──────┘
-                                 │ fan-out
-          ┌──────────────────────┼──────────────────────┐
-          ▼                      ▼                       ▼                      ▼
-  ┌──────────────┐    ┌──────────────────┐    ┌────────────────┐    ┌──────────────────────┐
-  │ Scalability  │    │    Security      │    │     Cost       │    │  Maintainability     │
-  │   gpt-5      │    │    gpt-5         │    │    gpt-5       │    │     gpt-5            │
-  └──────┬───────┘    └────────┬─────────┘    └──────┬─────────┘    └──────────┬───────────┘
-         │                     │                      │                          │
-         └─────────────────────┴──────────────────────┴──────────────────────────┘
-                                          │ fan-in
-                                   ┌──────▼──────┐
-                                   │  Detector   │  gpt-5-mini  — surfaces conflicts
-                                   └──────┬──────┘
-                                          │
-                                   ┌──────▼──────┐
-                                   │   Critic    │  gpt-5-mini  — challenges assumptions
-                                   └──────┬──────┘
-                                          │
-                                   ┌──────▼──────┐
-                                   │ Synthesizer │  gpt-5.5     — final recommendation
-                                   └──────┬──────┘
-                                          │
-                                   ┌──────▼──────┐
-                                   │    Gate     │  rule-based  — approve / block / override
-                                   └─────────────┘
+```mermaid
+flowchart TD
+    P["🗂️ Planner\ngpt-5-mini"]
+
+    P --> SC["📈 Scalability\ngpt-5"]
+    P --> SE["🔒 Security\ngpt-5"]
+    P --> CO["💰 Cost\ngpt-5"]
+    P --> MA["🔧 Maintainability\ngpt-5"]
+
+    SC --> D
+    SE --> D
+    CO --> D
+    MA --> D
+
+    D["🔍 Detector\ngpt-5-mini\nSurfaces conflicts"]
+    D --> CR["🧐 Critic\ngpt-5-mini\nChallenges assumptions"]
+    CR --> SY["⚖️ Synthesizer\ngpt-5.5\nFinal recommendation"]
+    SY --> G["🚦 Gate\nRule-based\nApprove / Block / Override"]
 ```
 
 The four specialist agents run **concurrently** via LangGraph's parallel fan-out, reducing wall time by ~1.8× vs sequential execution (~21s vs ~37s mean TTA).
