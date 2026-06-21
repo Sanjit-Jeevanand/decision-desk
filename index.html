@@ -459,11 +459,8 @@
 
     function backendWsUrl() {
         const loc = window.location;
-        if (loc.hostname === 'localhost' || loc.hostname === '127.0.0.1') {
-            return `ws://${loc.host}/ws/review`;
-        }
-        // GCS-hosted frontend → point to Cloud Run backend
-        return 'wss://decision-desk.europe-west1.run.app/ws/review';
+        const proto = loc.protocol === 'https:' ? 'wss' : 'ws';
+        return `${proto}://${loc.host}/ws/review`;
     }
 
     function recLabel(rec) {
