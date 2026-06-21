@@ -5,9 +5,10 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
+COPY pyproject.toml .
 COPY src/ src/
 COPY index.html .
-RUN pip install --no-cache-dir -e src/
+RUN pip install --no-cache-dir -e .
 
 ENV PORT=8080
 EXPOSE 8080
