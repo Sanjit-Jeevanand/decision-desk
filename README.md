@@ -1,8 +1,10 @@
 # DecisionDesk
 
-A real-time, multi-agent architecture review system. You describe a binary infrastructure decision — PostgreSQL vs DynamoDB, monolith vs microservices, REST vs GraphQL — and eight specialised LLM agents analyse it in parallel, surface conflicts, critique assumptions, and deliver a structured verdict via a streaming WebSocket interface.
+A real-time, multi-agent architecture review system. You describe a binary infrastructure decision (PostgreSQL vs DynamoDB, monolith vs microservices, REST vs GraphQL) and eight specialised LLM agents analyse it in parallel, surface conflicts, critique assumptions, and deliver a structured verdict via a streaming WebSocket interface.
 
 Built as a backend engineering portfolio project demonstrating multi-agent orchestration, LangGraph parallel execution, human-in-the-loop revision, and production observability.
+
+Live at **[decisiondesk.sanjit-ml.com](https://decisiondesk.sanjit-ml.com)**
 
 ---
 

@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="DecisionDesk — real-time software architecture review via multi-agent LLM reasoning. Independent specialist agents, explicit conflict detection, and policy-gated synthesis.">
-    <title>DecisionDesk — Architecture Review</title>
+    <meta name="description" content="DecisionDesk: real-time software architecture review via multi-agent LLM reasoning. Independent specialist agents, explicit conflict detection, and policy-gated synthesis.">
+    <title>DecisionDesk | Architecture Review</title>
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='5' fill='%237c3aed'/%3E%3Cpath d='M7 8h10M7 12h10M7 16h6' stroke='white' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E">
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -101,7 +101,7 @@
                 <span class="gradient-text">Review, Automated</span>
             </h1>
             <p class="text-lg text-slate-400 mb-8 leading-relaxed max-w-2xl">
-                Submit a binary architecture decision. Eight independent agents reason in parallel, surface conflicts, and produce an auditable recommendation — streamed live.
+                Submit a binary architecture decision. Eight independent agents reason in parallel, surface conflicts, and produce an auditable recommendation, streamed live.
             </p>
             <div class="flex flex-wrap gap-4">
                 <a href="#demo" class="px-6 py-3 bg-violet-600 hover:bg-violet-500 text-white font-medium rounded-lg transition-all flex items-center gap-2">
@@ -132,7 +132,7 @@
                     <svg class="w-4 h-4 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
                 </div>
                 <h3 class="text-sm font-semibold text-slate-200 mb-1">Explicit Conflicts</h3>
-                <p class="text-xs text-slate-400 leading-relaxed">The Detector surfaces where specialists disagree — on recommendations, confidence, or risk reasoning.</p>
+                <p class="text-xs text-slate-400 leading-relaxed">The Detector surfaces where specialists disagree: on recommendations, confidence, or risk reasoning.</p>
             </div>
             <div class="p-5 rounded-xl bg-slate-900/50 border border-slate-800">
                 <div class="w-9 h-9 rounded-lg bg-emerald-500/10 flex items-center justify-center mb-3">
@@ -150,7 +150,7 @@
     <div class="max-w-[1400px] mx-auto px-6 py-8">
         <div class="text-center mb-6">
             <h2 class="text-2xl font-semibold text-slate-100 mb-2">Submit Architecture Decision</h2>
-            <p class="text-sm text-slate-500">Agents reason independently — they cannot see each other's outputs</p>
+            <p class="text-sm text-slate-500">Agents reason independently; they cannot see each other's outputs</p>
         </div>
 
         <!-- Input card -->
@@ -313,7 +313,7 @@
                     <div id="gateContent"></div>
                 </div>
 
-                <!-- Revision panel — shown after first pass completes -->
+                <!-- Revision panel shown after first pass completes -->
                 <div id="revisionPanel" class="hidden panel rounded-xl p-5 border-l-2 border-slate-600/50 animate-fade-in">
                     <div class="flex items-center gap-2 mb-4">
                         <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
@@ -372,15 +372,15 @@
         <div class="grid md:grid-cols-3 gap-5">
             <div class="p-5 rounded-xl bg-slate-900/40 border border-slate-800">
                 <h3 class="text-sm font-semibold text-slate-200 mb-2">LangGraph Orchestration</h3>
-                <p class="text-xs text-slate-400 leading-relaxed">Two compiled graphs — parallel (fan-out/fan-in on the 4 specialists) and sequential (baseline for benchmarking). Shared flat TypedDict state eliminates merge conflicts in parallel execution.</p>
+                <p class="text-xs text-slate-400 leading-relaxed">Two compiled graphs: parallel (fan-out/fan-in on the 4 specialists) and sequential (baseline for benchmarking). Shared flat TypedDict state eliminates merge conflicts in parallel execution.</p>
             </div>
             <div class="p-5 rounded-xl bg-slate-900/40 border border-slate-800">
                 <h3 class="text-sm font-semibold text-slate-200 mb-2">Pydantic I/O Schemas</h3>
-                <p class="text-xs text-slate-400 leading-relaxed">Every agent input and output is a typed Pydantic model. Planner writes named sub-questions per specialist — no generic list indexing. OpenAI structured outputs validate JSON schema at the model layer.</p>
+                <p class="text-xs text-slate-400 leading-relaxed">Every agent input and output is a typed Pydantic model. Planner writes named sub-questions per specialist; no generic list indexing. OpenAI structured outputs validate JSON schema at the model layer.</p>
             </div>
             <div class="p-5 rounded-xl bg-slate-900/40 border border-slate-800">
                 <h3 class="text-sm font-semibold text-slate-200 mb-2">WebSocket Streaming</h3>
-                <p class="text-xs text-slate-400 leading-relaxed">LangGraph <code class="text-violet-400 text-[10px]">astream_events(v2)</code> fires <code class="text-violet-400 text-[10px]">on_chain_start</code> and <code class="text-violet-400 text-[10px]">on_chain_end</code> per node. Specialists arrive out of order as threads complete — the UI renders each independently.</p>
+                <p class="text-xs text-slate-400 leading-relaxed">LangGraph <code class="text-violet-400 text-[10px]">astream_events(v2)</code> fires <code class="text-violet-400 text-[10px]">on_chain_start</code> and <code class="text-violet-400 text-[10px]">on_chain_end</code> per node. Specialists arrive out of order as threads complete; the UI renders each independently.</p>
             </div>
         </div>
     </div>
@@ -390,7 +390,7 @@
 <section id="agents" class="scroll-mt-14">
     <div class="max-w-[1400px] mx-auto px-6 py-14">
         <h2 class="text-2xl font-semibold text-slate-100 mb-2">The 8 Agents</h2>
-        <p class="text-sm text-slate-500 mb-10">Each agent sees only what it needs — specialists cannot see each other's outputs</p>
+        <p class="text-sm text-slate-500 mb-10">Each agent sees only what it needs; specialists cannot see each other's outputs</p>
         <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
             <div class="p-4 rounded-xl bg-slate-900/50 border border-slate-800">
                 <div class="text-[10px] font-mono text-violet-400 mb-2">PLANNER · gpt-5-mini</div>
@@ -466,9 +466,9 @@
     function recLabel(rec) {
         const a = document.getElementById('optionA')?.value || 'Option A';
         const b = document.getElementById('optionB')?.value || 'Option B';
-        if (rec === 'option_a') return `A — ${a}`;
-        if (rec === 'option_b') return `B — ${b}`;
-        if (rec === 'hybrid')   return `Hybrid — ${a} + ${b}`;
+        if (rec === 'option_a') return `A: ${a}`;
+        if (rec === 'option_b') return `B: ${b}`;
+        if (rec === 'hybrid')   return `Hybrid: ${a} + ${b}`;
         return rec ?? 'Pending';
     }
 
@@ -516,7 +516,7 @@
     function showAgentDetail(name) {
         const out = agentOutputs[name];
         if (!out) return;
-        // Simple highlight — could expand to a side panel later
+        // Simple highlight; could expand to a side panel later
         console.log(`[${name}]`, out);
     }
 
@@ -572,7 +572,7 @@
                 ${risks.length ? `<div class="flex flex-wrap gap-1 mt-2">${risks.slice(0,3).map(r => `<span class="px-1.5 py-0.5 rounded bg-red-500/10 text-red-400 text-[9px] border border-red-500/20">${escapeHtml(r)}</span>`).join('')}</div>` : ''}`;
         } else if (name === 'detector') {
             const n = (output?.conflicts ?? []).length;
-            body = `<p class="text-xs text-slate-400">${n > 0 ? `${n} conflict(s) found — severity: ${escapeHtml(output.severity)}` : 'No conflicts detected.'}</p>`;
+            body = `<p class="text-xs text-slate-400">${n > 0 ? `${n} conflict(s) found, severity: ${escapeHtml(output.severity)}` : 'No conflicts detected.'}</p>`;
         } else if (name === 'critic') {
             const n = (output?.issues ?? []).length;
             body = `<p class="text-xs text-slate-400">${n > 0 ? `${n} issue(s) raised.` : 'No issues.'} ${output?.requires_revision ? '<span class="text-red-400">Revision required.</span>' : ''}</p>`;
@@ -802,7 +802,7 @@
                 agentOutputs[data.agent] = data.output;
                 setAgentState(data.agent, 'completed');
 
-                // Update panels in-place — don't add to the agent card list
+                // Update panels in-place; don't add to the agent card list
                 if (data.agent === 'synthesizer') {
                     showSynthesis(data.output);
                     document.getElementById('synthRevisionBadge').classList.remove('hidden');
@@ -825,7 +825,7 @@
 
         revWs.onerror = () => {
             updateConnectionStatus('disconnected');
-            showError('Revision request failed — check server logs.');
+            showError('Revision request failed. Check server logs.');
             setReviseButtonBusy(false);
         };
 
@@ -871,7 +871,7 @@
 
         ws.onerror = () => {
             updateConnectionStatus('disconnected');
-            showError('Could not reach the backend. It may be cold-starting — try again in a few seconds.');
+            showError('Could not reach the backend. It may be cold-starting; try again in a few seconds.');
             setRunButtonBusy(false);
         };
 
