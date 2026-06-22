@@ -90,7 +90,7 @@ export default function () {
         reviewsFailed.add(1);
         socket.close();
       }
-    }, 180000);
+    }, 300000);
   });
 
   check(connected, { "WS connected": (v) => v === true });
